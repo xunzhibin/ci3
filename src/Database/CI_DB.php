@@ -298,7 +298,7 @@ class CI_DB extends CI_DB_query_builder
 	 * 
 	 * @param string $message
 	 * 
-	 * @throws \Xzb\CI3\Database\DatabaseFailedException
+	 * @throws \Xzb\Ci3\Database\DatabaseFailedException
 	 */
 	protected function throwDatabaseFailedException(string $message = '')
 	{
