@@ -14,10 +14,7 @@
             "Xzb\\Ci3\\": "src/"
         },
         "classmap": [
-			"src/Database/CI_DB.php",
-			"../system/database/drivers/mysqli/mysqli_driver.php",
-			"../../system/database/DB_query_builder.php",
-			"../../../system/database/DB_driver.php"
+			"src/Database/CI_DB.php"
 		]
     },
     "config": {
