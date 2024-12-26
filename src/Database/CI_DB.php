@@ -175,7 +175,6 @@ class CI_DB extends CI_DB_query_builder
 	 */
 	public function from($from)
 	{
-		$from .= 'a';
 		if ($this->qb_from) {
 			return $this;
 		}
