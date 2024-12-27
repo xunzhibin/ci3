@@ -9,7 +9,8 @@
         }
     ],
     "require": {
-        "doctrine/inflector": "*"
+        "doctrine/inflector": "*",
+        "nesbot/carbon": "2.*"
     },
     "autoload": {
         "psr-4": {
