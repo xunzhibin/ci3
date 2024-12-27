@@ -9,7 +9,7 @@
         }
     ],
     "require": {
-        "doctrine/inflector": "*",
+        "doctrine/inflector": "2.*",
         "nesbot/carbon": "2.*"
     },
     "autoload": {
