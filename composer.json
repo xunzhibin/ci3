@@ -15,7 +15,7 @@
         },
         "classmap": [
 			"src/Database/CI_DB.php",
-            "../../system/database/drivers/mysqli/mysqli_driver.php"
+            "../../../system/database/drivers/mysqli/mysqli_driver.php"
 		],
 		"files": [
 			"src/Core/Common.php"
