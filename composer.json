@@ -8,7 +8,9 @@
             "email": "xunzhibin@jnexpert.com"
         }
     ],
-    "require": {},
+    "require": {
+        "doctrine/inflector": "*"
+    },
     "autoload": {
         "psr-4": {
             "Xzb\\Ci3\\": "src/"
