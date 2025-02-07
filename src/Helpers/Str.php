@@ -178,23 +178,23 @@ class Str
 // 		return $string;
 // 	}
 
-// 	/**
-// 	 * 是否 包含指定 子字符串
-// 	 *
-// 	 * @param string $string
-// 	 * @param string|string[] $substrings
-// 	 * @return bool
-// 	 */
-// 	public static function contains(string $string, $substrings): bool
-// 	{
-// 		foreach ((array)$substrings as $substring) {
-// 			if ($substring !== '' && mb_strpos($string, $substring) !== false) {
-// 				return true;
-// 			}
-// 		}
+	// /**
+	//  * 是否 包含指定 子字符串
+	//  *
+	//  * @param string $string
+	//  * @param string|string[] $substrings
+	//  * @return bool
+	//  */
+	// public static function contains(string $string, $substrings): bool
+	// {
+	// 	foreach ((array)$substrings as $substring) {
+	// 		if ($substring !== '' && mb_strpos($string, $substring) !== false) {
+	// 			return true;
+	// 		}
+	// 	}
 
-// 		return false;
-// 	}
+	// 	return false;
+	// }
 
 	/**
 	 * 是否 以指定 子字符串 开头
@@ -235,30 +235,30 @@ class Str
 //         return $string;
 // 	}
 
-	/**
-	 * 是否为 JSON字符串
-	 * 
-	 * @param string $value
-	 * @return bool
-	 */
-	public static function isJson($value): bool
-	{
-		if (! is_string($value)) {
-			return false;
-		}
+	// /**
+	//  * 是否为 JSON字符串
+	//  * 
+	//  * @param string $value
+	//  * @return bool
+	//  */
+	// public static function isJson($value): bool
+	// {
+	// 	if (! is_string($value)) {
+	// 		return false;
+	// 	}
 
-		// try {
-		// 	json_decode($value, true, 512, JSON_THROW_ON_ERROR);
-		// }
-		// catch (\JsonException $e) {
-		// 	return false;
-		// }
+	// 	// try {
+	// 	// 	json_decode($value, true, 512, JSON_THROW_ON_ERROR);
+	// 	// }
+	// 	// catch (\JsonException $e) {
+	// 	// 	return false;
+	// 	// }
 
-		// return true;
+	// 	// return true;
 
-		json_decode($value, true);
+	// 	json_decode($value, true);
 
-		return (json_last_error() == JSON_ERROR_NONE);
-	}
+	// 	return (json_last_error() == JSON_ERROR_NONE);
+	// }
 
 }

@@ -9,12 +9,30 @@ if (! function_exists('class_basename')) {
      * @param string|object
      * @return string
      */
-    function class_basename($class)
+    function class_basename($class): string
     {
         $class = is_object($class) ? get_class($class) : $class;
 
         return basename(str_replace('\\', '/', $class));
     }
+}
+
+// ------------------------------------------------------------------------
+
+if (! function_exists('__lang')) {
+	/**
+	 * 翻译
+	 * 
+	 * @param string $file
+	 * @param string $line
+	 * @return string
+	 */
+	function __lang(string $file, string $line): string
+	{
+		load_class('Lang', 'core')->load($file);
+
+		return load_class('Lang', 'core')->line($line);
+	}
 }
 
 // ------------------------------------------------------------------------
