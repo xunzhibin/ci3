@@ -2,9 +2,9 @@
 
 namespace Xzb\Ci3\Core\Eloquent;
 
-use RuntimeException;
+// use RuntimeException;
 
-class ModelMissingPrimaryKeyException extends RuntimeException
+class ModelMissingPrimaryKeyException extends ModelException
 {
 
 }

@@ -1,6 +1,6 @@
 <?php
 
-use Xzb\Ci3\Database\DatabaseFailedException;
+use Xzb\Ci3\Database\QueryException;
 
 class CI_DB extends CI_DB_query_builder
 {
@@ -15,24 +15,28 @@ class CI_DB extends CI_DB_query_builder
 	 * @param int $batchSize
 	 * @return int
 	 */
-	public function insert_batch($table = null, $values = null, $escape = null, $batchSize = 100): int
+	public function insertBatch(array $values, bool $escape = null, int $batchSize = 100): int
 	{
-		if (is_array($table)) {
-			$values = $table;
-			$table = null;
-		}
-
 		// 转为 二维数组
-		if ($values && is_array($values) && ! is_array(reset($values))) {
+		if (! is_array(reset($values))) {
 			$values = [$values];
 		}
 
-		$insertRows = parent::insert_batch($table, $values, $escape, $batchSize);
-		if ($insertRows === false) {
-			$this->throwDatabaseFailedException('Insert SQL error');
-		}
+		$this->set_insert_batch($values, '', $escape);
 
-		return $insertRows;
+		$affected_rows = 0;
+		for ($i = 0, $total = count($this->qb_set); $i < $total; $i += $batchSize) {
+			$table = $this->protect_identifiers(reset($this->qb_from), TRUE, $escape, FALSE);
+			$sql = $this->_insert_batch($table, $this->qb_keys, array_slice($this->qb_set, $i, $batchSize));
+			if ($this->query($sql) === false) {
+				$this->throwDatabaseFailedException('Insert SQL error');
+			}
+
+			$affected_rows += $this->affected_rows();
+		}
+		$this->_reset_write();
+
+		return $affected_rows;
 	}
 
 	/**
@@ -50,7 +54,7 @@ class CI_DB extends CI_DB_query_builder
 			$table = '';
 		}
 
-		return $this->insert_batch($table, $value, $escape);
+		return $this->insertBatch($value, $escape);
 	}
 
 	/**
@@ -61,7 +65,7 @@ class CI_DB extends CI_DB_query_builder
 	 */
 	public function insertGetId(array $value): int
 	{
-		$this->insert($value);
+		$result = $this->insert($value);
 
 		return $this->insert_id();
 	}
@@ -121,13 +125,7 @@ class CI_DB extends CI_DB_query_builder
 	public function get($table = '', $limit = NULL, $offset = NULL)
 	{
 		if (is_array($table)) {
-			if (! $this->qb_select) {
-				$this->select($table);
-			}
-
-			if ($table != ['*']) {
-				$this->select($table);
-			}
+			$this->select($table);
 
 			$table = '';
 		}
@@ -138,6 +136,24 @@ class CI_DB extends CI_DB_query_builder
 		}
 
 		return $results;
+	}
+
+	/**
+	 * EXISTS
+	 * 
+	 * @param
+	 * @return bool
+	 */
+	public function exists()
+	{
+		$sql = $this->get_compiled_select();
+
+		$result = $this->query("select exists({$sql}) as `exists`");
+		if ($result === false) {
+			$this->throwDatabaseFailedException('Query SQL error');
+		}
+
+		return (bool)($result->row()->exists ?? false);
 	}
 
 	/**
@@ -175,9 +191,7 @@ class CI_DB extends CI_DB_query_builder
 	 */
 	public function from($from)
 	{
-		if ($this->qb_from) {
-			return $this;
-		}
+		$this->qb_from = [];
 
 		return parent::from($from);
 	}
@@ -221,8 +235,12 @@ class CI_DB extends CI_DB_query_builder
 	 * @param bool $escape
 	 * @return \CI_DB_query_builder
 	 */
-	public function likeGroup($columns, string $value = null, string $side = 'both', bool $escape = NULL)
+	public function likeGroup($columns = null, string $value = null, string $side = 'both', bool $escape = NULL)
 	{
+		if (! $columns || ! strlen($value)) {
+			return $this;
+		}
+
 		if (! is_array($columns)) {
 			$columns = [$columns => $value];
 		}
@@ -278,7 +296,6 @@ class CI_DB extends CI_DB_query_builder
 		return $this;
 	}
 
-
 // ---------------------------------- 分页 ----------------------------------
 	/**
 	 * 偏移量 分页
@@ -292,13 +309,43 @@ class CI_DB extends CI_DB_query_builder
 		return $this->limit($perPage)->offset(($page - 1) * $perPage);
 	}
 
+// ---------------------------------- 事务 ----------------------------------
+	/**
+	 * 事务
+	 * 
+	 * @param \Closure
+	 * @return mixed
+	 * 
+	 * @throws \Throwable
+	 */
+	public function transaction(\Closure $callback)
+	{
+		// 开启事务
+		$this->trans_begin();
+
+		try {
+			$callbackResult = $callback($this);
+		}
+		catch (\Throwable $e) {
+			// 回滚事务
+			$this->trans_rollback();
+
+			throw $e;
+		}
+
+		// 提交事务
+		$this->trans_commit();
+
+		return $callbackResult;
+	}
+
 // ---------------------------------- 异常 ----------------------------------
 	/**
 	 * 抛出 数据库失败 异常
 	 * 
 	 * @param string $message
 	 * 
-	 * @throws \Xzb\Ci3\Database\DatabaseFailedException
+	 * @throws \Xzb\Ci3\Database\QueryException
 	 */
 	protected function throwDatabaseFailedException(string $message = '')
 	{
@@ -311,16 +358,28 @@ class CI_DB extends CI_DB_query_builder
 			$message .= ': ' . $this->error()['message'];
 		}
 
-		throw new DatabaseFailedException($message);
+		throw new QueryException($message);
 	}
 
 // ---------------------------------- 魔术方法 ----------------------------------
 	// 析构函数
 	public function __destruct()
 	{
+		$queries = [];
+		foreach ($this->queries as $key => $sql) {
+			$time = number_format($this->query_times[$key], 4);
+			$sql = str_replace(["\n"], ' ', $sql);
+
+			array_push($queries, [
+				'database' => $this->hostname . '(' . $this->database . ')',
+				'sql' => $sql,
+				'time' => $time
+			]);
+		}
+
         load_class('Config', 'core')->set_item(
             'db_queries',
-            array_merge(config_item('db_queries') ?? [], $this->queries)
+            array_merge(config_item('db_queries') ?? [], $queries)
         );
 	}
 

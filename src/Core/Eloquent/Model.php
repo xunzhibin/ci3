@@ -2,11 +2,21 @@
 
 namespace Xzb\Ci3\Core\Eloquent;
 
-abstract class Model
+use Xzb\Ci3\Helpers\Traits\ForwardsCalls;
+// use Iterator;
+use ArrayAccess;
+// use JsonSerializable;
+
+// abstract class Model implements ArrayAccess, JsonSerializable
+abstract class Model implements ArrayAccess
+// abstract class Model implements Iterator
+// abstract class Model
 {
 	use Traits\Attributes;
 	use Traits\Timestamps;
 	use Traits\ModelOperations;
+	use Traits\Events;
+	use ForwardsCalls;
 
 	/**
 	 * 关联 数据表 类
@@ -28,6 +38,25 @@ abstract class Model
 	 * @var bool
 	 */
 	public $wasRecentlyCreated = false;
+
+	/**
+	 * 数据表类 返回的方法
+	 * 
+	 * @var array
+	 */
+	protected $tablePassthru = [
+		'getConnection',
+		'getTable',
+		'getColumns',
+		'hasColumn',
+		'getColumnType',
+		'isColumnNullable',
+		'getCreatedAtColumn',
+		'getUpdatedAtColumn',
+		'isAutoIncrement',
+		'getPrimaryKeyName',
+		'getForeignKeyName'
+	];
 
 	/**
 	 * 填充 属性
@@ -102,7 +131,87 @@ abstract class Model
 		return $this->attributesToArray();
 	}
 
+// // ---------------------- PHP JsonSerializable(JSON序列化) 预定义接口 ----------------------
+// 	/**
+// 	 * 转为 JSON可序列化的数据
+// 	 *
+// 	 * @return mixed
+// 	 */
+// 	public function jsonSerialize()
+// 	{
+// 		return $this->toArray();
+// 	}
+
+// ---------------------- PHP ArrayAccess(数组式访问) 预定义接口 ----------------------
+	/**
+	 * 模型属性 是否存在
+	 * 
+	 * @param mixed $offset
+	 * @return bool
+	 */
+	public function offsetExists($offset): bool
+	{
+		return array_key_exists($offset, $this->attributes);
+	}
+
+	/**
+	 * 获取 模型属性
+	 * 
+	 * @param mixed $offset
+	 * @return mixed
+	 */
+	public function offsetGet($offset)
+	{
+		return $this->getAttribute($offset);
+	}
+
+	/**
+	 * 设置 模型属性
+	 * 
+	 * @param mixed $offset
+	 * @param mixed $value
+	 * @return void
+	 */
+	public function offsetSet($offset, $value): void
+	{
+		$this->setAttribute($offset, $value);
+	}
+
+	/**
+	 * 销毁 模型属性
+	 * 
+	 * @param mixed $offset
+	 * @return void
+	 */
+	public function offsetUnset($offset): void
+	{
+		unset($this->attributes[$offset]);
+	}
+
 // ---------------------- 魔术方法 ----------------------
+	/**
+	 * 动态 获取 属性
+	 * 
+	 * @param string $key
+	 * @return mixed
+	 */
+	public function __get(string $key)
+	{
+		return $this->getAttribute($key);
+	}
+
+	/**
+	 * 动态 设置 属性
+	 * 
+	 * @param string $key
+	 * @param mixed $value
+	 * @return void
+	 */
+	public function __set(string $key, $value): void
+	{
+		$this->setAttribute($key, $value);
+	}
+
 	/**
 	 * 处理调用 不可访问 方法
 	 * 
@@ -112,35 +221,11 @@ abstract class Model
 	 */
 	public function __call($method, $parameters)
 	{
-		// 表 方法
-		$tableMethods = [
-			'getConnection', 'getTable',
-			'getColumns', 'hasColumn', 'getColumnType', 'isColumnNullable',
-			'getCreatedAtColumn', 'getUpdatedAtColumn',
-			'isAutoIncrement', 'getPrimaryKeyName'
-		];
-		if (in_array($method, $tableMethods)) {
-			return (new $this->table)->{$method}(...$parameters);
+		if (in_array($method, $this->tablePassthru)) {
+			return $this->forwardCallTo(new $this->table, $method, $parameters);
 		}
 
-		$builder = (new Builder())->setModel($this);
-		try {
-			return $builder->{$method}(...$parameters);
-		}
-		catch (\Error|\BadMethodCallException $e) {
-			$pattern = '~^Call to undefined method (?P<class>[^:]+)::(?P<method>[^\(]+)\(\)$~';
-			if (! preg_match($pattern, $e->getMessage(), $matches)) {
-				throw $e;
-			}
-
-			if ($matches['class'] != get_class($builder) || $matches['method'] != $method) {
-				throw $e;
-			}
-
-			throw new \BadMethodCallException(
-				sprintf('Call to undefined method %s::%s()', static::class, $method)
-			);
-		}
+		return $this->forwardCallTo((new Builder())->setModel($this), $method, $parameters);
 	}
 
 	/**

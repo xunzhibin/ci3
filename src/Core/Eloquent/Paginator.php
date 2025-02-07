@@ -66,6 +66,16 @@ class Paginator
 	}
 
 	/**
+	 * 获取 分页 数据集合
+	 * 
+	 * @return \Xzb\Ci3\Core\Eloquent\Collection
+	 */
+	public function getCollection()
+	{
+		return $this->items;
+	}
+
+	/**
 	 * 获取 项总数
 	 * 
 	 * @return int
@@ -112,16 +122,39 @@ class Paginator
 	 */
 	public function toArray(): array
 	{
-		return [
+		// return [
+		// 	'data' => $this->items->toArray(),
+		// 	'total'			=> $this->total(),
+		// 	'count'			=> $this->total(),
+		// 	'per_page'		=> $this->perPage(),
+		// 	'current_page'	=> $this->currentPage(),
+		// 	'last_page'		=> $this->lastPage(),
+		// 	'total_page'	=> $this->lastPage(),
+		// ];
+
+		return array_merge([
 			'data' => $this->items->toArray(),
-			'meta' => [
-				'total'			=> $this->total(),
-				'count'			=> $this->total(),
-				'per_page'		=> $this->perPage(),
-				'current_page'	=> $this->currentPage(),
-				'last_page'		=> $this->lastPage(),
-				'total_page'	=> $this->lastPage(),
-			]
+		], $this->paginationInfo());
+	}
+
+	/**
+	 * 分页 信息
+	 * 
+	 * @return array
+	 */
+	public function paginationInfo(): array
+	{
+		return [
+			'total_rows'	=> $this->total(),
+			'total'			=> $this->total(),
+			'count'			=> $this->total(),
+
+			'page'			=> $this->currentPage(),
+			'current_page'	=> $this->currentPage(),
+			'per_page'		=> $this->perPage(),
+
+			'last_page'		=> $this->lastPage(),
+			'total_page'	=> $this->lastPage(),
 		];
 	}
 

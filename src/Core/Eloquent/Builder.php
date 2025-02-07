@@ -6,22 +6,69 @@ use Xzb\Ci3\Database\Connection;
 use Xzb\Ci3\Helpers\{
 	Str
 };
+use Xzb\Ci3\Helpers\Traits\ForwardsCalls;
+use \Closure;
+use \Throwable;
 
 class Builder
 {
+	use ForwardsCalls;
+
 	/**
 	 * 操作 模型 实例
 	 * 
 	 * @var \Xzb\Ci3\Core\Eloquent\Model
 	 */
-	protected $model;	
+	protected $model;
 
 	/**
-	 * CI查询构造器 类方法
+	 * 事务 开启标识
+	 * 
+	 * @var bool
+	 */
+	protected static $transaction = false;
+
+	/**
+	 * 事务 查询构造器
+	 * 
+	 * @var \CI_DB_query_builder
+	 */
+	protected static $transactionDb;
+
+	/**
+	 * 从 CI查询构造器 返回写入方法
 	 * 
 	 * @var array
 	 */
-	protected $ciQb = [];
+	protected $ciQbWritePassthru = [
+		'insertGetId',
+		'delete',
+	];
+
+	/**
+	 * 从 CI查询构造器 返回读取方法
+	 * 
+	 * @var array
+	 */
+	protected $ciQbReadPassthru = [
+		'count',
+		'max',
+		'exists'
+	];
+
+	/**
+	 * CI查询构造器 缓冲 方法
+	 * 
+	 * @var array
+	 */
+	protected $ciQbBuffers = [
+		'from',
+		'where',
+		'likeGroup',
+		'orderBy',
+		'limit',
+		'forPage'
+	];
 
 	/**
 	 * 设置 模型
@@ -52,54 +99,62 @@ class Builder
 	 * 创建 模型 新实例
 	 * 
 	 * @param array $attributes
+	 * @param bool $exists
 	 * @return \Xzb\Ci3\Core\Eloquent\Model
 	 */
-	public function newModelInstance(array $attributes = [])
+	public function newModelInstance(array $attributes = [], bool $exists = false)
 	{
-		return $this->model->newInstance($attributes);
+		return $this->model->newInstance($attributes, $exists);
 	}
 
 	/**
 	 * 获取 CI 原始 查询构造器类
 	 * 
-	 * @param bool $read
+	 * @param bool $isRead
 	 * @return \CI_DB_query_builder
 	 */
-	public function db(bool $read = false)
+	public function db(bool $isRead = false)
+	{
+		return static::$transaction ? $this->getTransactionDb() : $this->getCiDb($isRead);
+	}
+
+	/**
+	 * 获取 CI 原始 查询构造器类
+	 * 
+	 * @param bool $isRead
+	 * @return \CI_DB_query_builder
+	 */
+	protected function getCiDb(bool $isRead = false)
 	{
 		return (new Connection)->query(
-			$this->model->getConnection($read)
+			$this->model->getConnection($isRead)
 		);
 	}
 
 	/**
-	 * 设置 CI查询构造器 类方法
+	 * 获取 事务 CI 原始 查询构造器类
 	 * 
-	 * @param string $method
-	 * @param array $parameters
-	 * @return $this
+	 * @return \CI_DB_query_builder
 	 */
-	protected function setCiQb(string $method, array $parameters)
+	protected function getTransactionDb()
 	{
-		array_push($this->ciQb, compact('method', 'parameters'));
+		if (static::$transactionDb) {
+			return static::$transactionDb;
+		}
 
-		return $this;
+		return static::$transactionDb = $this->getCiDb();
 	}
 
 	/**
-	 * 执行 CI查询构造器 类方法
+	 * 重置 事务 CI 原始 查询构造器类
 	 * 
-	 * @param \CI_DB_query_builder
-	 * @return \CI_DB_query_builder
+	 * @return $this
 	 */
-	protected function performCiQb(\CI_DB_query_builder $builder)
+	protected function resetTransactionDb()
 	{
-		foreach ($this->ciQb as $value) {
-			extract($value);
-			$builder->{$method}(...$parameters);
-		}
+		static::$transactionDb = null;
 
-		return $builder;
+		return $this;
 	}
 
 	/**
@@ -114,7 +169,7 @@ class Builder
 			$value = $this->newModelInstance($value)->getAttributesForInsert();
 		}
 
-		return $this->performCiQb($this->db())->insert($values);
+		return $this->performBuffer($this->db())->insert($values);
 	}
 
 	/**
@@ -140,9 +195,9 @@ class Builder
 	 */
 	public function update(array $value): int
 	{
-		$value = $this->newModelInstance($value)->getAttributesForUpdate();
+		$value = $this->newModelInstance($value, true)->getAttributesForUpdate();
 
-		return $this->performCiQb($this->db())->update($value);
+		return $this->performBuffer($this->db())->update($value);
 	}
 
 	/**
@@ -153,7 +208,7 @@ class Builder
 	 */
 	public function get($columns = ['*'])
 	{
-		$results = $this->performCiQb($this->db(true))
+		$results = $this->performBuffer($this->db(true))
 						->get(is_array($columns) ? $columns : func_get_args())
 						->result_array();
 
@@ -190,7 +245,7 @@ class Builder
 
 		$count = $result->count();
 		if ($count === 0) {
-			throw (new ModelNotFoundException('No query results for model [' . get_class($this->model) . '] '));
+			throw (new ModelNotFoundException('No query results for model [' . get_class($this->model) . ']'));
 		}
 
 		if ($count > 1) {
@@ -223,6 +278,99 @@ class Builder
 		return new Paginator($results, $total, $perPage, $page);
 	}
 
+	/**
+	 * 主键 条件
+	 * 
+	 * @param mixed $id
+	 * @param array $where
+	 * @return $this
+	 */
+	public function wherePrimaryKey($id, array $where = [])
+	{
+		return $this->where(array_merge([
+			$this->model->getPrimaryKeyName() => $id
+		], $where));
+	}
+
+	/**
+	 * 更新 按 主键
+	 * 
+	 * @param mixed $id
+	 * @param array $data
+	 * @param array $filter
+	 * @return \Xzb\Ci3\Core\Eloquent\Model
+	 */
+	public function updateByPrimaryKey($id, array $data, array $filter = [])
+	{
+		$model = $this->wherePrimaryKey($id, $filter)->sole();
+
+		$model->update($data);
+
+		return $model;
+	}
+
+	/**
+	 * 读取 唯一记录 按 主键
+	 * 
+	 * @param mixed $id
+	 * @param array $filter
+	 * @return \Xzb\Ci3\Core\Eloquent\Model
+	 */
+	public function soleByPrimaryKey($id, array $filter = [])
+	{
+		return $this->wherePrimaryKey($id, $filter)->sole();
+	}
+
+	/**
+	 * 删除 按 主键
+	 * 
+	 * @param mixed $id
+	 * @param array $filter
+	 * @return int
+	 */
+	public function deleteByPrimaryKey($id, array $filter = []): int
+	{
+		return $this->wherePrimaryKey($id, $filter)->delete();
+	}
+
+	/**
+	 * 事务
+	 * 
+	 * @param \Closure
+	 * @return mixed
+	 * 
+	 * @throws \Throwable
+	 */
+	public function transaction(Closure $callback)
+	{
+		static::$transaction = true;
+
+		// 开启事务
+		$this->db()->trans_begin();
+
+		try {
+			$callbackResult = $callback($this->db());
+		}
+		catch (Throwable $e) {
+			$callbackResult = $e;
+		}
+
+		static::$transaction = false;
+		$this->resetTransactionDb();
+
+		if ($callbackResult instanceof Throwable) {
+			// 回滚事务
+			$this->db()->trans_rollback();
+
+			throw $callbackResult;
+		}
+
+		// 提交事务
+		$this->db()->trans_commit();
+
+		return $callbackResult;
+	}
+
 // ---------------------- 魔术方法 ----------------------
 	/**
 	 * 处理调用 不可访问 方法
@@ -233,33 +381,14 @@ class Builder
 	 */
 	public function __call($method, $parameters)
 	{
-		$ciQbMethods = [
-			'from', 'where', 'likeGroup', 'orderBy', 'limit', 'forPage', 
-		];
-		if (in_array($method, $ciQbMethods)) {
-			$this->setCiQb($method, $parameters);
+		if (in_array($method, $this->ciQbBuffers)) {
+			$this->setBuffer($method, $parameters);
 			return $this;
 		}
 
-		// 写入
-		$ciQbWriteMethods = [
-			'insertGetId', 'delete',
-		];
-		if (in_array($method, $ciQbWriteMethods)) {
-			return $this->performCiQb($this->db())->{$method}(...$parameters);
-		}
-
-		// 读取
-		$ciQbWriteMethods = [
-			'count', 'max'
-		];
-		if (in_array($method, $ciQbWriteMethods)) {
-			return $this->performCiQb($this->db(true))->{$method}(...$parameters);
-		}
-
-		throw new \BadMethodCallException(
-			sprintf('Call to undefined method %s::%s()', static::class, $method)
-		);
+		$isRead = in_array($method, $this->ciQbReadPassthru);
+		$passthru = array_merge($this->ciQbWritePassthru, $this->ciQbReadPassthru);
+		return $this->bufferForwardCallTo($this->db($isRead), $method, $parameters, $passthru);
 	}
 
 }

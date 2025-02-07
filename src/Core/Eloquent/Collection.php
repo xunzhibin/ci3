@@ -23,6 +23,16 @@ class Collection
 	}
 
 	/**
+	 * 获取 所有 项
+	 * 
+	 * @return array
+	 */
+	public function all()
+	{
+		return $this->items;
+	}
+
+	/**
 	 * 获取 第一个 项
 	 * 
 	 * @param mixed $default
@@ -31,6 +41,17 @@ class Collection
 	public function first($default = null)
 	{
 		return reset($this->items) ?: $default;
+	}
+
+	/**
+	 * 映射项
+	 * 
+	 * @param callable
+	 * @return static
+	 */
+	public function map(callable $callback)
+	{
+		return new static(array_map($callback, $this->items));
 	}
 
 	/**

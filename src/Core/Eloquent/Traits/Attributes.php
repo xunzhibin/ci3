@@ -7,6 +7,7 @@ use Xzb\Ci3\Helpers\{
 	Transform,
 	Date
 };
+use Xzb\Ci3\Core\Eloquent\ModelMissingAttributeException;
 
 trait Attributes
 {
@@ -90,7 +91,7 @@ trait Attributes
 	 * @param string $key
 	 * @return mixed
 	 * 
-	 * @throws \Xzb\Ci3\Database\Eloquent\ModelMissingAttributeException
+	 * @throws \Xzb\Ci3\Core\Eloquent\ModelMissingAttributeException
 	 */
 	public function getAttribute(string $key)
 	{
@@ -184,6 +185,16 @@ trait Attributes
 	public function getRawAttribute(string $key)
 	{
 		return $this->attributes[$key];
+	}
+
+	/**
+	 * 获取 主键 值
+	 * 
+	 * @return mixed
+	 */
+	public function getPrimaryKeyValue()
+	{
+		return $this->getRawAttribute($this->getPrimaryKeyName());
 	}
 
 	/**

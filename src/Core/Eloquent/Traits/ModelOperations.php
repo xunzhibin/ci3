@@ -18,7 +18,7 @@ trait ModelOperations
 	public function save(): bool
 	{
 		// saving 保存前 事件
-		// $this->fireModelEvent('saving');
+		$this->fireModelEvent('saving');
 
 		$saved  = $this->exists
 					// 存在时 更新
@@ -29,7 +29,7 @@ trait ModelOperations
 		// 操作成功
 		if ($saved) {
 			// saved 保存后 事件
-			// $this->fireModelEvent('saved');
+			$this->fireModelEvent('saved');
 
 			// 同步 属性 原始状态
 			$this->syncOriginal();
@@ -67,13 +67,13 @@ trait ModelOperations
 		}
 
 		// deleting 删除前 事件
-		// $this->fireModelEvent('deleting');
+		$this->fireModelEvent('deleting');
 
 		// 执行删除
 		$rows = $this->performDelete();
 
 		// deleted 删除后 事件
-		// $this->fireModelEvent('deleted');
+		$this->fireModelEvent('deleted');
 
 		return $rows;
 	}
@@ -86,7 +86,7 @@ trait ModelOperations
 	protected function performInsert(): bool
 	{
 		// creating 创建前 事件
-		// $this->fireModelEvent('creating');
+		$this->fireModelEvent('creating');
 
 		// 插入 属性
 		$attributes = $this->getAttributesForInsert();
@@ -106,7 +106,7 @@ trait ModelOperations
 		$this->wasRecentlyCreated = true;
 
 		// created 创建后 事件
-		// $this->fireModelEvent('created');
+		$this->fireModelEvent('created');
 
 		return true;
 	}
@@ -124,7 +124,7 @@ trait ModelOperations
 		}
 
 		// updating 更新前 事件
-		// $this->fireModelEvent('updating');
+		$this->fireModelEvent('updating');
 
 		// 更新 属性
 		$attributes = $this->getAttributesForUpdate();
@@ -137,7 +137,7 @@ trait ModelOperations
 		}
 
 		// updated 更新后 事件
-		// $this->fireModelEvent('updated', false);
+		$this->fireModelEvent('updated');
 
 		return true;
 	}
