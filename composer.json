@@ -17,7 +17,7 @@
             "Xzb\\Ci3\\": "src/"
         },
         "classmap": [
-			"src/Database/CI_DB.php",
+			"src/Database/CI_DB.php"
 		],
 		"files": [
 			"src/Core/Common.php"
