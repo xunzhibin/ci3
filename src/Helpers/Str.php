@@ -1,5 +1,4 @@
 <?php
-
 namespace Xzb\Ci3\Helpers;
 
 // 第三方 字符串库 https://www.doctrine-project.org/projects/inflector.html
@@ -8,84 +7,13 @@ use Doctrine\Inflector\InflectorFactory;
 
 class Str
 {
-	/**
-	 * 蛇形命名 缓存
-	 *
-	 * @var array
-	 */
-	protected static $snakeCache = [];
-
+// ------------------------- 大驼峰命名法 -------------------------
 	/**
 	 * 大驼峰命名 缓存
 	 *
 	 * @var array
 	 */
 	protected static $upperCamelCache = [];
-
-// 	/**
-// 	 * 小驼峰命名 缓存
-// 	 *
-// 	 * @var array
-// 	 */
-// 	protected static $lowerCamelCache = [];
-
-// ---------------------- 转换 ----------------------
-	/**
-	 * 转为 复数形式
-	 *
-	 * @param  string  $value
-	 * @return string
-	 */
-	public static function plural(string $value): string
-	{
-		// 创建 新实例
-		return InflectorFactory::create()->build()
-								// 转 复数形式
-								->pluralize($value);
-	}
-
-// 	/**
-// 	 * 转为 单数形式
-// 	 *
-// 	 * @param  string  $value
-// 	 * @return string
-// 	 */
-// 	public static function singular(string $value): string
-// 	{
-// 		// 创建 新实例
-// 		return InflectorFactory::create()->build()
-// 								// 转 单数形式
-// 								->singularize($value);
-// 	}
-
-	/**
-	 * 转为 蛇形命名法
-	 *
-	 * @param  string  $value
-	 * @param  string  $delimiter
-	 * @return string
-	 */
-	public static function snake(string $value, string $delimiter = '_'): string
-	{
-		$key = $value;
-
-		// 已缓存
-		if (isset(static::$snakeCache[$key][$delimiter])) {
-			return static::$snakeCache[$key][$delimiter];
-		}
-
-		// 创建 新实例
-		$value = InflectorFactory::create()->build()
-								// 转 蛇形命名 字符串
-								->tableize($value);
-
-		// 检测 替换 分隔符
-		if ($delimiter != $defaultDelimiter = '_') {
-			$value = str_replace($defaultDelimiter, $delimiter, $value);
-		}
-
-		return static::$snakeCache[$key][$delimiter] = $value;
-	}
 
 	/**
 	 * 转为 大驼峰命名法
@@ -95,170 +23,117 @@ class Str
 	 * @param string $value
 	 * @return string
 	 */
-	public static function upperCamel(string $value): string
+	public static function upperCamelCase(string $value): string
 	{
-		$key = $value;
-
-		// 已缓存
-		if (isset(static::$upperCamelCache[$key])) {
-			return static::$upperCamelCache[$key];
+		if (isset(static::$upperCamelCache[$value])) {
+			return static::$upperCamelCache[$value];
 		}
 
-		// 创建 新实例
-		$value = InflectorFactory::create()->build()
-								// 转 大驼峰命名法
-								->classify($value);
-
-		// 缓存 并 返回
-		return static::$upperCamelCache[$key] = $value;
+		return static::$upperCamelCache[$value] = InflectorFactory::create()
+														->build()
+														->classify($value);
 	}
-
-// 	/**
-// 	 * 转为 小驼峰命名法
-// 	 *
-// 	 * 首字母小写
-// 	 *
-// 	 * @param string $value
-// 	 * @return string
-// 	 */
-// 	public static function lowerCamel(string $value): string
-// 	{
-// 	    $key = $value;
-
-// 		// 已缓存
-// 	    if (isset(static::$lowerCamelCache[$key])) {
-// 	        return static::$lowerCamelCache[$key];
-// 	    }
-
-// 	    // 创建 新实例
-// 	    $value = InflectorFactory::create()->build()
-// 	                            // 转 小驼峰命名法
-// 	                            ->camelize($value);
-
-// 		// 缓存 并 返回
-// 	    return static::$lowerCamelCache[$key] = $value;
-// 	}
-
-// 	/**
-// 	 * 是否 以指定 子字符串 结尾
-// 	 *
-// 	 * @param string $string
-// 	 * @param string|string[] $substrings
-// 	 * @return bool
-// 	 */
-// 	public static function endsWith(string $string, $substrings): bool
-// 	{
-// 		foreach ((array)$substrings as $substring) {
-// 			if (substr($string, -strlen($substring)) === (string) $substring) {
-// 				return true;
-// 			}
-// 		}
-
-// 		return false;
-// 	}
-
-// 	/**
-// 	 * 替换 最后一个 指定 子字符串
-// 	 *
-// 	 * @param string $string
-// 	 * @param string $search
-// 	 * @param string $replace
-// 	 * @return string
-// 	 */
-// 	public static function replaceLast(string $string, string $search, string $replace): string
-// 	{
-// 		if ($search) {
-// 			$position = strrpos($string, $search);
-
-// 			if ($position !== false) {
-// 				return substr_replace($string, $replace, $position, strlen($search));
-// 			}
-// 		}
-
-// 		return $string;
-// 	}
-
-	// /**
-	//  * 是否 包含指定 子字符串
-	//  *
-	//  * @param string $string
-	//  * @param string|string[] $substrings
-	//  * @return bool
-	//  */
-	// public static function contains(string $string, $substrings): bool
-	// {
-	// 	foreach ((array)$substrings as $substring) {
-	// 		if ($substring !== '' && mb_strpos($string, $substring) !== false) {
-	// 			return true;
-	// 		}
-	// 	}
-
-	// 	return false;
-	// }
 
 	/**
-	 * 是否 以指定 子字符串 开头
-	 *
-	 * @param string $string
-	 * @param string|string[] $substrings
-	 * @return bool
+	 * 帕斯卡拼写法
+	 * 
+	 * @param string $value
+	 * @return string
 	 */
-	public static function startsWith(string $string, $substrings): bool
+	public static function pascalCase(string $value): string
 	{
-		foreach ((array)$substrings as $substring) {
-			if ($substring !== '' && substr($string, 0, strlen($substring)) === (string)$substring) {
-				return true;
-			}
-		}
-
-		return false;
+		return static::upperCamelCase($value);
 	}
 
-// 	/**
-// 	 * 生成 字母、数字 随机字符串
-// 	 *
-// 	 * @param int $length
-// 	 * @return bool
-// 	 */
-// 	public static function random(int $length): string
-// 	{
-//         $string = '';
+// ------------------------- 小驼峰命名法 -------------------------
+	/**
+	 * 小驼峰命名 缓存
+	 *
+	 * @var array
+	 */
+	protected static $lowerCamelCache = [];
 
-//         while ($length > $strlen = strlen($string)) {
-//             $size = $length - $strlen;
+	/**
+	 * 转为 小驼峰命名法
+	 *
+	 * 首字母小写
+	 *
+	 * @param string $value
+	 * @return string
+	 */
+	public static function lowerCamelCase(string $value): string
+	{
+	    if (isset(static::$lowerCamelCache[$value])) {
+	        return static::$lowerCamelCache[$value];
+	    }
 
-//             $bytes = random_bytes($size);
+	    return static::$lowerCamelCache[$value] = InflectorFactory::create()
+														->build()
+														->camelize($value);
+	}
 
-//             $string .= substr(str_replace(['/', '+', '='], '', base64_encode($bytes)), 0, $size);
-//         }
+	/**
+	 * 驼峰命名法
+	 * 
+	 * @param string $value
+	 * @return string
+	 */
+	public static function camelCase(string $value): string
+	{
+		return static::lowerCamelCase($value);
+	}
 
-//         return $string;
-// 	}
+// ------------------------- 蛇形命名法 -------------------------
+	/**
+	 * 蛇形命名 缓存
+	 *
+	 * @var array
+	 */
+	protected static $snakeCache = [];
 
-	// /**
-	//  * 是否为 JSON字符串
-	//  * 
-	//  * @param string $value
-	//  * @return bool
-	//  */
-	// public static function isJson($value): bool
-	// {
-	// 	if (! is_string($value)) {
-	// 		return false;
-	// 	}
+	/**
+	 * 转为 蛇形命名法
+	 *
+	 * @param  string  $value
+	 * @param  string  $delimiter
+	 * @return string
+	 */
+	public static function snakeCase(string $value, string $delimiter = '_'): string
+	{
+		if (isset(static::$snakeCache[$value][$delimiter])) {
+			return static::$snakeCache[$value][$delimiter];
+		}
 
-	// 	// try {
-	// 	// 	json_decode($value, true, 512, JSON_THROW_ON_ERROR);
-	// 	// }
-	// 	// catch (\JsonException $e) {
-	// 	// 	return false;
-	// 	// }
+		$newValue = InflectorFactory::create()->build()->tableize($value);
 
-	// 	// return true;
+		if ($delimiter != $defaultDelimiter = '_') {
+			$newValue = str_replace($defaultDelimiter, $delimiter, $newValue);
+		}
 
-	// 	json_decode($value, true);
+		return static::$snakeCache[$value][$delimiter] = $newValue;
+	}
 
-	// 	return (json_last_error() == JSON_ERROR_NONE);
-	// }
+// ------------------------- 单复数 -------------------------
+	/**
+	 * 转为 复数形式
+	 *
+	 * @param  string  $value
+	 * @return string
+	 */
+	public static function pluralize(string $value): string
+	{
+		return InflectorFactory::create()->build()->pluralize($value);
+	}
+
+	/**
+	 * 转为 单数形式
+	 * 
+	 * @param string $value
+	 * @return string
+	 */
+	public static function singularize(string $value): String
+	{
+		return InflectorFactory::create()->build()->singularize($value);
+	}
 
 }

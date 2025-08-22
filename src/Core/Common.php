@@ -1,63 +1,63 @@
 <?php
 
 // ------------------------------------------------------------------------
-
-if (! function_exists('class_basename')) {
-    /**
-     * 获取 对象或类的 basename
-     * 
-     * @param string|object
-     * @return string
-     */
-    function class_basename($class): string
-    {
-        $class = is_object($class) ? get_class($class) : $class;
-
-        return basename(str_replace('\\', '/', $class));
-    }
-}
-
-// ------------------------------------------------------------------------
-
-if (! function_exists('__lang')) {
+if (! function_exists('_error_handler')) {
 	/**
-	 * 翻译
+	 * 错误处理函数
 	 * 
-	 * @param string $file
-	 * @param string $line
-	 * @return string
+	 * @param int $errno
+	 * @param string errmsg
+	 * @param string errfile
+	 * @param int $errline
+	 * @return void
 	 */
-	function __lang(string $file, string $line): string
+	function _error_handler(int $errno, string $errmsg, string $errfile, int $errline)
 	{
-		load_class('Lang', 'core')->load($file);
+		if (in_array($errno, [E_DEPRECATED, E_USER_DEPRECATED])) {
+			return ;
+		}
 
-		return load_class('Lang', 'core')->line($line);
+		load_class('Exceptions', 'core')->log_exception($errno, $errmsg, $errfile, $errline);
+
+		load_class('Exceptions', 'core')->show_php_error($errno, $errmsg, $errfile, $errline);
 	}
 }
 
 // ------------------------------------------------------------------------
+if (! function_exists('_exception_handler')) {
+	/**
+	 * 异常处理函数
+	 * 
+	 * @param \Throwable $exception
+	 * @return void
+	 */
+	function _exception_handler(\Throwable $exception)
+	{
+		load_class('Exceptions', 'core')->log_exception(
+			'error',
+			'Exception: ' . $exception->getMessage(),
+			$exception->getFile(),
+			$exception->getLine()
+		);
 
-// if (! function_exists('class_traits')) {
-//     /**
-//      * 获取 对象或类的 所有 trait
-//      * 
-//      * @param string|object $class
-//      * @return string
-//      */
-//     function class_traits($class)
-//     {
-//         if (is_object($class)) {
-//             $class = get_class($class);
-//         }
-
-//         $traits = [];
-
-//         foreach (array_reverse(class_parents($class)) + [$class => $class] as $class) {
-// 			$traits += class_uses($class) ?: [];
-//         }
-
-//         return array_unique($traits);
-//     }
-// }
+		load_class('Exceptions', 'core')->show_exception($exception);
+	}
+}
 
 // ------------------------------------------------------------------------
+if (! function_exists('_shutdown_handler')) {
+	/**
+	 * 异常处理函数
+	 * 
+	 * @return void
+	 */
+	function _shutdown_handler()
+	{
+		if ( ! is_null($error = error_get_last())) {
+			if (in_array($error['type'], [E_COMPILE_ERROR, E_CORE_ERROR, E_ERROR, E_PARSE])) {
+			// if ($error['type'] & (E_ERROR | E_PARSE | E_CORE_ERROR | E_CORE_WARNING | E_COMPILE_ERROR | E_COMPILE_WARNING)) {
+				_error_handler($error['type'], $error['message'], $error['file'], $error['line']);
+			}
+		}
+	}
+}
